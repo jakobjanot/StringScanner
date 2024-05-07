@@ -1,9 +1,11 @@
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace StringScanner.Tests;
 
 public class ScannerTests
 {
+    private Regex R(string pattern) => new Regex(pattern);
     [Fact]
     public void TestNew()
     {
@@ -144,31 +146,31 @@ public class ScannerTests
     public void TestScan()
     {
         var s = new Scanner("tør bøf");
-        Assert.Equal("tør", s.Scan(@"\w+"));
-        Assert.Null(s.Scan(@"\w+"));
-        Assert.Equal(" ", s.Scan(@"\s+"));
-        Assert.Equal("bø", s.Scan("bø"));
-        Assert.Equal("f", s.Scan(@"\w+"));
-        Assert.Null(s.Scan(@"\w+"));
+        Assert.Equal("tør", s.Scan(R(@"\w+")));
+        Assert.Null(s.Scan(R(@"\w+")));
+        Assert.Equal(" ", s.Scan(R(@"\s+")));
+        Assert.Equal("bø", s.Scan(R("bø")));
+        Assert.Equal("f", s.Scan(R(@"\w+")));
+        Assert.Null(s.Scan(R(@"\w+")));
     }
 
     [Fact]
     public void TestCheck()
     {
         var s = new Scanner("tør bøf");
-        Assert.Equal("tør", s.Check("tør"));
+        Assert.Equal("tør", s.Check(R("tør")));
         Assert.Equal(0, s.Pos);
         Assert.Equal("tør", s.Matched?.ToString());
-        Assert.Null(s.Check("bøf"));
+        Assert.Null(s.Check(R("bøf")));
     }
 
     [Fact]
     public void TestSkip()
     {
         var s = new Scanner("tør bøf");
-        Assert.Null(s.Skip("r"));
+        Assert.Null(s.Skip(R("r")));
         Assert.Equal(0, s.Pos);
-        Assert.Equal(3, s.Skip("tør"));
+        Assert.Equal(3, s.Skip(R("tør")));
         Assert.Equal(3, s.Pos);
     }
 
@@ -176,42 +178,42 @@ public class ScannerTests
     public void TestScanUntil()
     {
         var s = new Scanner("tør bøf.");
-        Assert.Equal("tør bø", s.ScanUntil(@"bø"));
-        Assert.Null(s.ScanUntil(@"XYZ"));
-        Assert.Equal("f", s.ScanUntil(@"\w+"));
-        Assert.Null(s.ScanUntil(@"\w+"));
+        Assert.Equal("tør bø", s.ScanUntil(R(@"bø")));
+        Assert.Null(s.ScanUntil(R(@"XYZ")));
+        Assert.Equal("f", s.ScanUntil(R(@"\w+")));
+        Assert.Null(s.ScanUntil(R(@"\w+")));
     }
 
     [Fact]
     public void TestSkipUntil()
     {
         var s = new Scanner("tør bøf");
-        s.SkipUntil("r");
+        s.SkipUntil(R("r"));
         Assert.Equal(3, s.Pos);
-        s.SkipUntil("b");
+        s.SkipUntil(R("b"));
         Assert.Equal(5, s.Pos);
-        Assert.Null(s.SkipUntil("x"));
+        Assert.Null(s.SkipUntil(R("x")));
     }
     
     [Fact]
     public void TestCheckUntil()
     {
         var s = new Scanner("tør bøf");
-        Assert.Equal("tør", s.CheckUntil("r"));
+        Assert.Equal("tør", s.CheckUntil(R("r")));
         Assert.Equal(0, s.Pos);
-        Assert.Equal("tør b", s.CheckUntil("b"));
+        Assert.Equal("tør b", s.CheckUntil(R("b")));
         Assert.Equal(0, s.Pos);
-        Assert.Null(s.CheckUntil("x"));
+        Assert.Null(s.CheckUntil(R("x")));
     }
 
     [Fact]
     public void TestValuesAtWithPositionalParams()
     {
         var s = new Scanner("Timestamp: Fri Dec 12 1975 14:39");
-        s.Scan("Timestamp: ");
-        s.Scan(@"(\w+) (\w+) (\d+) ");
+        s.Scan(R("Timestamp: "));
+        s.Scan(R(@"(\w+) (\w+) (\d+) "));
         Assert.Equal(new string[] { "Fri Dec 12 ", "12", "", "Dec" }, s.ValuesAt(0, -1, 5, 2));
-        s.Scan(@"(\w+) (\w+) (\d+) ");
+        s.Scan(R(@"(\w+) (\w+) (\d+) "));
         Assert.Null(s.ValuesAt(0, -1, 5, 2));
     }
 
@@ -219,10 +221,10 @@ public class ScannerTests
     public void TestValuesAtWithNamedParams()
     {
         var s = new Scanner("Timestamp: Fri Dec 12 1975 14:39");
-        s.Scan("Timestamp: ");
-        s.Scan(@"(?<date>(?<day>\w+) (?<month>\w+) (?<year>\d+)) ");
+        s.Scan(R("Timestamp: "));
+        s.Scan(R(@"(?<date>(?<day>\w+) (?<month>\w+) (?<year>\d+)) "));
         Assert.Equal(new string[] { "Fri Dec 12", "Fri", "12", "Dec" }, s.ValuesAt("date", "day", "year", "month"));
-        s.Scan(@"(\w+) (\w+) (\d+) ");
+        s.Scan(R(@"(\w+) (\w+) (\d+) "));
         Assert.Null(s.ValuesAt(0, -1, 5, 2));
     }
 
@@ -230,10 +232,10 @@ public class ScannerTests
     public void TestCaptures()
     {
         var s = new Scanner("Timestamp: Fri Dec 12 1975 14:39");
-        s.Scan("Timestamp: ");
-        s.Scan(@"((\w+) (\w+) (\d+)) ");
+        s.Scan(R("Timestamp: "));
+        s.Scan(R(@"((\w+) (\w+) (\d+)) "));
         Assert.Equal(new string[] { "Fri Dec 12", "Fri", "Dec", "12" }, s.Captures());
-        s.Scan(@"(\w+) (\w+) (\d+) ");
+        s.Scan(R(@"(\w+) (\w+) (\d+) "));
         Assert.Null(s.Captures());
     }
 
@@ -241,10 +243,10 @@ public class ScannerTests
     public void TestNamedCaptures()
     {
         var s = new Scanner("Timestamp: Fri Dec 12 1975 14:39");
-        s.Scan("Timestamp: ");
-        s.Scan(@"(?<date>(?<day>\w+) (?<month>\w+) (?<year>\d+)) ");
+        s.Scan(R("Timestamp: "));
+        s.Scan(R(@"(?<date>(?<day>\w+) (?<month>\w+) (?<year>\d+)) "));
         Assert.Equal(new Dictionary<string, string> { { "date", "Fri Dec 12" }, { "day", "Fri" }, { "month", "Dec" }, { "year", "12" } }, s.NamedCaptures());
-        s.Scan(@"(\w+) (\w+) (\d+) ");
+        s.Scan(R(@"(\w+) (\w+) (\d+) "));
         Assert.Null(s.NamedCaptures());
     }
 
@@ -252,22 +254,22 @@ public class ScannerTests
     public void TestPreAndPostMatch()
     {
         var s = new Scanner("a b c d e");
-        s.Scan(@"\w");
+        s.Scan(R(@"\w"));
         Assert.Equal("", s.PreMatch());
         Assert.Equal(" b c d e", s.PostMatch());
-        s.Skip(@"\s");
+        s.Skip(R(@"\s"));
         Assert.Equal("a", s.PreMatch());
         Assert.Equal("b c d e", s.PostMatch());
-        s.Scan("b");
+        s.Scan(R("b"));
         Assert.Equal("a ", s.PreMatch());
         Assert.Equal(" c d e", s.PostMatch());
-        s.ScanUntil("c");
+        s.ScanUntil(R("c"));
         Assert.Equal("a b ", s.PreMatch());
         Assert.Equal(" d e", s.PostMatch());
         Assert.Equal(" ", s.Read());
         Assert.Null(s.PreMatch());
         Assert.Null(s.PostMatch());
-        s.Scan("never match");
+        s.Scan(R("never match"));
         Assert.Null(s.PreMatch());
         Assert.Null(s.PostMatch());
     }
