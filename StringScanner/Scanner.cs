@@ -10,7 +10,6 @@ public class Scanner
     /// <summary>
     /// Creates a new Scanner object. The scan pointer is set to the beginning of the string, and the match register is cleared.
     /// </summary>
-    /// <param name="str"></param>
     public Scanner(string str)
     {
         this.Str = str;
@@ -49,47 +48,8 @@ public class Scanner
     }
 
     /// <summary>
-    /// This returns the value that Scan would return, without advancing the scan pointer. The match register is affected, though.
-    /// </summary>
-    /// <param name="pattern"></param>
-    public string? CheckAndReturn(Regex pattern)
-    {
-        Match(pattern);
-        if (Matched != null && Matched.Success && Matched.Index == this.Pos)
-        {
-            return Matched.Value;
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// Like Check, but it returns a boolean indicating whether the pattern matched.
-    /// </summary>
-    public bool Check(Regex pattern) => CheckAndReturn(pattern) != null;
-
-    /// <summary>
-    /// This returns the value that ScanUntil would return, without advancing the scan pointer. The match register is affected, though.
-    /// </summary>
-    /// <param name="pattern"></param>
-    public string? CheckUntilAndReturn(Regex pattern)
-    {
-        Match(pattern);
-        if (Matched != null && Matched.Success)
-        {
-            return this.Str.Substring(this.Pos, Matched.Index - this.Pos + Matched.Length);
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// Like CheckUntil, but it returns a boolean indicating whether the pattern matched.
-    /// </summary>
-    public bool CheckUntil(Regex pattern) => CheckUntilAndReturn(pattern) != null;
-
-    /// <summary>
     /// Scans one character and returns it.
     /// </summary>
-    /// <param name="len"></param>
     public string? Read(int len = 1)
     {
         Matched = null;
@@ -122,7 +82,6 @@ public class Scanner
     /// <summary>
     /// Tests whether the given pattern is matched from the current scan pointer. Returns the length of the match, or null. The scan pointer is not advanced.
     /// </summary>
-    /// <param name="pattern"></param>
     public bool IsMatch(Regex pattern)
     {
         Match(pattern);
@@ -132,7 +91,6 @@ public class Scanner
     /// <summary>
     /// Extracts a string corresponding to string[pos,len], without advancing the scan pointer.
     /// </summary>
-    /// <param name="len"></param>
     public string? Peek(int len) => this.Str.Substring(this.Pos, len);
 
     /// <summary>
@@ -159,67 +117,87 @@ public class Scanner
     public string Rest() => this.Str.Substring(this.Pos);
 
     /// <summary>
-    /// Tries to match with pattern at the current position. If there’s a match, the scanner advances the “scan pointer” and returns the matched string. Otherwise, the scanner returns null.
+    /// This returns the value that Scan would return, without advancing the scan pointer. The match register is affected, though.
     /// </summary>
-    /// <param name="pattern"></param>
-    public string? ScanAndReturn(Regex pattern)
+    public bool Check(Regex pattern)
     {
         Match(pattern);
-        
+        return Matched != null && Matched.Success && Matched.Index == this.Pos;
+    }
+
+    /// <summary>
+    /// Like Check, but a function is used to transform the named captures in the match before it is returned.
+    /// </summary>
+    public string? Check(Regex pattern, Func<Func<string, string?>, string> map) => Check(pattern) ? map(key => Matched!.Groups[key].Value) : null;
+
+    /// <summary>
+    /// This returns the value that ScanUntil would return, without advancing the scan pointer. The match register is affected, though.
+    /// </summary>
+    public bool CheckUntil(Regex pattern)
+    {
+        Match(pattern);
+        return Matched != null && Matched.Success;
+    }
+
+    /// <summary>
+    /// Like CheckUntil, but a function is used to transform the named captures in the match before it is returned.
+    /// </summary>
+    public string? CheckUntil(Regex pattern, Func<Func<string, string?>, string> map) => CheckUntil(pattern) ? map(key => Matched!.Groups[key].Value) : null;
+
+    /// <summary>
+    /// Tries to match with pattern at the current position. If there’s a match, the scanner advances the “scan pointer” and returns true. Otherwise, the scanner returns false.
+    /// </summary>
+    public bool Scan(Regex pattern)
+    {
+        Match(pattern);
+
         if (Matched != null && Matched.Success && Matched.Index == this.Pos)
         {
             this.Pos += Matched.Length;
-            return Matched.Value;
+            return true;
         }
         else
         {
             Matched = null;
-            return null;
+            return false;
         }
     }
 
     /// <summary>
-    /// Like ScanAndReturn, but it returns a boolean indicating whether the pattern matched.
+    /// Like scan, but a function is used to transform the named captures in the match before it is returned.
     /// </summary>
-    public bool Scan(Regex pattern) => ScanAndReturn(pattern) != null;
+    public string? Scan(Regex pattern, Func<Func<string, string?>, string> map) => Scan(pattern) ? map(key => Matched!.Groups[key].Value) : null;
 
     /// <summary>
     /// Scans the string until the pattern is matched. Returns the substring up to and including the end of the match, advancing the scan pointer to that location. If there is no match, null is returned.
     /// </summary>
-    /// <param name="pattern"></param>
-    public string? ScanUntilAndReturn(Regex pattern)
+    public bool ScanUntil(Regex pattern)
     {
         Match(pattern);
+        
         if (Matched != null && Matched.Success)
         {
-            var result = this.Str.Substring(this.Pos, Matched.Index - this.Pos + Matched.Length);
             this.Pos = Matched.Index + Matched.Length;
-            return result;
+            return true;
         }
         else
         {
             Matched = null;
-            return null;
+            return false;
         }
     }
 
     /// <summary>
-    /// Like ScanUntilAndReturn, but it returns a boolean indicating whether the pattern matched.
+    /// Like scan, but a function is used to transform the named captures in the match before it is returned.
     /// </summary>
-    public bool ScanUntil(Regex pattern) => ScanUntilAndReturn(pattern) != null;
+    public string? ScanUntil(Regex pattern, Func<Func<string, string?>, string> map) => ScanUntil(pattern) ? map(key => Matched!.Groups[key].Value) : null;
 
     /// <summary>
-    /// Attempts to skip over the given pattern beginning with the scan pointer. If it matches, the scan pointer is advanced to the end of the match, and the length of the match is returned. Otherwise, null is returned.
+    /// Attempts to skip over the given pattern beginning with the scan pointer. If it matches, the scan pointer is advanced to the end of the match.
     /// 
     /// It’s similar to scan, but without returning the matched string.
     /// </summary>
-    /// <param name="pattern"></param>
-    public int? SkipAndReturn(Regex pattern) => Scan(pattern) ? Matched?.Length : null;
-
-    /// <summary>
-    /// Like Skip, but it returns a boolean indicating whether the pattern matched.
-    /// </summary>
-    public bool Skip(Regex pattern) => SkipAndReturn(pattern) != null;
+    public bool Skip(Regex pattern) => Scan(pattern);
 
     /// <summary>
     /// Advances the scan pointer until pattern is matched and consumed. Returns the number of bytes advanced, or null if no match was found.
@@ -228,18 +206,11 @@ public class Scanner
     /// 
     /// It’s similar to scan_until, but without returning the intervening string.
     /// </summary>
-    /// <param name="pattern"></param>
-    public int? SkipUntilAndReturn(Regex pattern) => ScanUntil(pattern) ? Matched?.Index + Matched?.Length - this.Pos : null;
-
-    /// <summary>
-    /// Like SkipUntil, but it returns a boolean indicating whether the pattern matched.
-    /// </summary>
-    public bool SkipUntil(Regex pattern) => SkipUntilAndReturn(pattern) != null;
+    public bool SkipUntil(Regex pattern) => ScanUntil(pattern);
 
     /// <summary>
     /// Returns the subgroups in the most recent match at the given indices. If nothing was priorly matched, it returns null.
     /// </summary>
-    /// <param name="indices"></param>
     public string[]? ValuesAt(params int[] indices)
     {
         if (Matched == null) return null;
@@ -266,7 +237,6 @@ public class Scanner
     /// <summary>
     /// Returns the subgroups in the most recent match at the given names. If nothing was priorly matched, it returns null.
     /// </summary>
-    /// <param name="names"></param>
     public string[] ValuesAt(params string[] names)
     {
         if (Matched == null) return new string[0];
