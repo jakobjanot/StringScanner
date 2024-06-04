@@ -15,7 +15,7 @@ public class ScannerTests
         Assert.IsType<Scanner>(s);
         Assert.Equal(0, s.Pos);
         Assert.Equal("tør bøf", s.Str);
-        Assert.Null(s.Matched);
+        Assert.Null(s.LastMatchLength);
     }
 
     [Fact]
@@ -26,7 +26,7 @@ public class ScannerTests
         s.Reset();
         Assert.Equal(0, s.Pos);
         Assert.Equal("tør bøf", s.Str);
-        Assert.Null(s.Matched);
+        Assert.Null(s.LastMatchLength);
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public class ScannerTests
         var s = new Scanner("tør bøf");
         s.Terminate();
         Assert.Equal(7, s.Pos);
-        Assert.Null(s.Matched);
+        Assert.Null(s.LastMatchLength);
         Assert.True(s.IsEndOfString());
     }
 
@@ -150,11 +150,11 @@ public class ScannerTests
     {
         var s = new Scanner("tør bøf)");
         Assert.Equal("ordet er: tør", s.Scan(wordRegex, m => $"ordet er: {m("word")}"));
-        Assert.Null(s.Scan(wordRegex, m => m("word")));
+        Assert.Null(s.Scan(wordRegex, m => m("word")!));
         Assert.True(s.Scan(R(@"\s+")));
         Assert.True(s.Scan(R("bø")));
-        Assert.Equal("f", s.Scan(wordRegex, m => m("word")));
-        Assert.Null(s.Scan(wordRegex, m => m("word")));
+        Assert.Equal("f", s.Scan(wordRegex, m => m("word")!));
+        Assert.Null(s.Scan(wordRegex, m => m("word")!));
     }
 
     [Fact]
@@ -162,18 +162,18 @@ public class ScannerTests
     {
         var s = new Scanner("tør bøf");
         Assert.True(s.Scan(wordRegex));
-        Assert.Equal("tør", s.Matched?.ToString());
+        Assert.Equal(3, s.LastMatchLength);
         Assert.Equal(3, s.Pos);
         Assert.False(s.Scan(wordRegex));
         Assert.Equal(3, s.Pos);
         Assert.True(s.Scan(R(@"\s+")));
-        Assert.Equal(" ", s.Matched?.ToString());
+        Assert.Equal(1, s.LastMatchLength);
         Assert.Equal(4, s.Pos);
         Assert.True(s.Scan(R("bø")));
-        Assert.Equal("bø", s.Matched?.ToString());
+        Assert.Equal(2, s.LastMatchLength);
         Assert.Equal(6, s.Pos);
         Assert.True(s.Scan(wordRegex));
-        Assert.Equal("f", s.Matched?.ToString());
+        Assert.Equal(1, s.LastMatchLength);
         Assert.Equal(7, s.Pos);
         Assert.False(s.Scan(wordRegex));
         Assert.Equal(7, s.Pos);
@@ -183,9 +183,9 @@ public class ScannerTests
     public void TestCheckWithFunc()
     {
         var s = new Scanner("tør bøf");
-        Assert.Equal("tø", s.Check(R("(?<letter>t)(?<letter2>ø)r"), m => m("letter") + m("letter2")));
+        Assert.Equal("tø", s.Check(R("(?<letter>t)(?<letter2>ø)r"), m => m("letter")! + m("letter2")!));
         Assert.Equal(0, s.Pos);
-        Assert.Equal("tør", s.Matched?.ToString());
+        Assert.Equal(3, s.LastMatchLength);
         Assert.False(s.Check(R("bøf")));
     }
 
@@ -195,7 +195,7 @@ public class ScannerTests
         var s = new Scanner("tør bøf");
         Assert.True(s.Check(R("tør")));
         Assert.Equal(0, s.Pos);
-        Assert.Equal("tør", s.Matched?.ToString());
+        Assert.Equal(3, s.LastMatchLength);
         Assert.False(s.Check(R("bøf")));
     }
 
@@ -203,11 +203,11 @@ public class ScannerTests
     public void TestCheckUntilWithFunc()
     {
         var s = new Scanner("tør bøf");
-        Assert.Equal("r", s.CheckUntil(R("(?<letter>r)"), m => m("letter")));
+        Assert.Equal("r", s.CheckUntil(R("(?<letter>r)"), m => m("letter")!));
         Assert.Equal(0, s.Pos);
-        Assert.Equal("b", s.CheckUntil(R("(?<letter>b)"), m => m("letter")));
+        Assert.Equal("b", s.CheckUntil(R("(?<letter>b)"), m => m("letter")!));
         Assert.Equal(0, s.Pos);
-        Assert.Null(s.CheckUntil(R("(?<letter>x)"), m => m("letter")));
+        Assert.Null(s.CheckUntil(R("(?<letter>x)"), m => m("letter")!));
     }
 
     [Fact]
@@ -261,9 +261,9 @@ public class ScannerTests
         var s = new Scanner("tør bøf.");
         s.ScanUntil(R(@"(?<beef>bøf)"));
         Assert.Equal(7, s.Pos);
-        Assert.Null(s.ScanUntil(R(@"(?<beef>XYZ)"), m => m("beef")));
+        Assert.Null(s.ScanUntil(R(@"(?<beef>XYZ)"), m => m("beef")!));
         Assert.Equal(7, s.Pos);
-        Assert.Null(s.ScanUntil(wordRegex, m => m("word")));
+        Assert.Null(s.ScanUntil(wordRegex, m => m("word")!));
         s.ScanUntil(wordRegex);
         Assert.Equal(7, s.Pos);
         s.ScanUntil(wordRegex);
