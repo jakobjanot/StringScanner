@@ -1,11 +1,16 @@
 using System.Text.RegularExpressions;
 
 namespace StringScanner;
+
 public class Scanner
 {
     public int Pos { get; set; }
     public string Str { get; set; }
-    public Match? Matched { get; set; }
+
+    private Match? _lastMatch;
+    private Match? LastMatch { get => _lastMatch; set { LastMatchLength = value?.Length ?? null; _lastMatch = value; } }
+
+    public int? LastMatchLength { get; set; }
 
     /// <summary>
     /// Creates a new Scanner object. The scan pointer is set to the beginning of the string, and the match register is cleared.
@@ -52,7 +57,7 @@ public class Scanner
     /// </summary>
     public string? Read(int len = 1)
     {
-        Matched = null;
+        LastMatch = null;
         if (this.Pos + len > this.Str.Length)
         {
             return null;
@@ -75,8 +80,8 @@ public class Scanner
 
     private Match? Match(Regex pattern)
     {
-        if (IsEndOfString()) return Matched = null;
-        return Matched = pattern.Match(this.Str, this.Pos);
+        if (IsEndOfString()) return LastMatch = null;
+        return LastMatch = pattern.Match(this.Str, this.Pos);
     }
 
     /// <summary>
@@ -85,7 +90,7 @@ public class Scanner
     public bool IsMatch(Regex pattern)
     {
         Match(pattern);
-        return Matched != null && Matched.Success;
+        return LastMatch != null && LastMatch.Success;
     }
 
     /// <summary>
@@ -99,7 +104,7 @@ public class Scanner
     public void Reset()
     {
         this.Pos = 0;
-        this.Matched = null;
+        this.LastMatch = null;
     }
 
     /// <summary>
@@ -108,7 +113,7 @@ public class Scanner
     public void Terminate()
     {
         this.Pos = this.Str.Length;
-        this.Matched = null;
+        this.LastMatch = null;
     }
 
     /// <summary>
@@ -122,13 +127,13 @@ public class Scanner
     public bool Check(Regex pattern)
     {
         Match(pattern);
-        return Matched != null && Matched.Success && Matched.Index == this.Pos;
+        return LastMatch != null && LastMatch.Success && LastMatch.Index == this.Pos;
     }
 
     /// <summary>
     /// Like Check, but a function is used to transform the named captures in the match before it is returned.
     /// </summary>
-    public string? Check(Regex pattern, Func<Func<string, string?>, string> map) => Check(pattern) ? map(key => Matched!.Groups[key].Value) : null;
+    public string? Check(Regex pattern, Func<Func<string, string?>, string> map) => Check(pattern) ? map(key => LastMatch!.Groups[key].Value) : null;
 
     /// <summary>
     /// This returns the value that ScanUntil would return, without advancing the scan pointer. The match register is affected, though.
@@ -136,13 +141,13 @@ public class Scanner
     public bool CheckUntil(Regex pattern)
     {
         Match(pattern);
-        return Matched != null && Matched.Success;
+        return LastMatch != null && LastMatch.Success;
     }
 
     /// <summary>
     /// Like CheckUntil, but a function is used to transform the named captures in the match before it is returned.
     /// </summary>
-    public string? CheckUntil(Regex pattern, Func<Func<string, string?>, string> map) => CheckUntil(pattern) ? map(key => Matched!.Groups[key].Value) : null;
+    public string? CheckUntil(Regex pattern, Func<Func<string, string?>, string> map) => CheckUntil(pattern) ? map(key => LastMatch!.Groups[key].Value) : null;
 
     /// <summary>
     /// Tries to match with pattern at the current position. If there’s a match, the scanner advances the “scan pointer” and returns true. Otherwise, the scanner returns false.
@@ -151,14 +156,14 @@ public class Scanner
     {
         Match(pattern);
 
-        if (Matched != null && Matched.Success && Matched.Index == this.Pos)
+        if (LastMatch != null && LastMatch.Success && LastMatch.Index == this.Pos)
         {
-            this.Pos += Matched.Length;
+            this.Pos += LastMatch.Length;
             return true;
         }
         else
         {
-            Matched = null;
+            LastMatch = null;
             return false;
         }
     }
@@ -166,7 +171,7 @@ public class Scanner
     /// <summary>
     /// Like scan, but a function is used to transform the named captures in the match before it is returned.
     /// </summary>
-    public string? Scan(Regex pattern, Func<Func<string, string?>, string> map) => Scan(pattern) ? map(key => Matched!.Groups[key].Value) : null;
+    public string? Scan(Regex pattern, Func<Func<string, string?>, string> map) => Scan(pattern) ? map(key => LastMatch!.Groups[key].Value) : null;
 
     /// <summary>
     /// Scans the string until the pattern is matched. Returns the substring up to and including the end of the match, advancing the scan pointer to that location. If there is no match, null is returned.
@@ -175,14 +180,14 @@ public class Scanner
     {
         Match(pattern);
         
-        if (Matched != null && Matched.Success)
+        if (LastMatch != null && LastMatch.Success)
         {
-            this.Pos = Matched.Index + Matched.Length;
+            this.Pos = LastMatch.Index + LastMatch.Length;
             return true;
         }
         else
         {
-            Matched = null;
+            LastMatch = null;
             return false;
         }
     }
@@ -190,7 +195,7 @@ public class Scanner
     /// <summary>
     /// Like scan, but a function is used to transform the named captures in the match before it is returned.
     /// </summary>
-    public string? ScanUntil(Regex pattern, Func<Func<string, string?>, string> map) => ScanUntil(pattern) ? map(key => Matched!.Groups[key].Value) : null;
+    public string? ScanUntil(Regex pattern, Func<Func<string, string?>, string> map) => ScanUntil(pattern) ? map(key => LastMatch!.Groups[key].Value) : null;
 
     /// <summary>
     /// Attempts to skip over the given pattern beginning with the scan pointer. If it matches, the scan pointer is advanced to the end of the match.
@@ -213,17 +218,17 @@ public class Scanner
     /// </summary>
     public string[]? ValuesAt(params int[] indices)
     {
-        if (Matched == null) return null;
+        if (LastMatch == null) return null;
         var result = new string[indices.Length];
         for (int i = 0; i < indices.Length; i++)
         {
             if (indices[i] < 0)
             {
-                result[i] = Matched.Groups[Matched.Groups.Count + indices[i]].Value;
+                result[i] = LastMatch.Groups[LastMatch.Groups.Count + indices[i]].Value;
             }
             else
             {
-                result[i] = Matched.Groups[indices[i]].Value;
+                result[i] = LastMatch.Groups[indices[i]].Value;
             }
         }
         return result;
@@ -239,11 +244,11 @@ public class Scanner
     /// </summary>
     public string[] ValuesAt(params string[] names)
     {
-        if (Matched == null) return new string[0];
+        if (LastMatch == null) return new string[0];
         var result = new string[names.Length];
         for (int i = 0; i < names.Length; i++)
         {
-            result[i] = Matched.Groups[names[i]].Value;
+            result[i] = LastMatch.Groups[names[i]].Value;
         }
         return result;
     }
@@ -258,11 +263,11 @@ public class Scanner
     /// </summary>
     public string[]? Captures()
     {
-        if (Matched == null) return null;
-        var result = new string[Matched.Groups.Count - 1];
-        for (int i = 1; i < Matched.Groups.Count; i++)
+        if (LastMatch == null) return null;
+        var result = new string[LastMatch.Groups.Count - 1];
+        for (int i = 1; i < LastMatch.Groups.Count; i++)
         {
-            result[i - 1] = Matched.Groups[i].Value;
+            result[i - 1] = LastMatch.Groups[i].Value;
         }
         return result;
     }
@@ -272,11 +277,11 @@ public class Scanner
     /// </summary>
     public Dictionary<string, string>? NamedCaptures()
     {
-        if (Matched == null) return null;
+        if (LastMatch == null) return null;
         var result = new Dictionary<string, string>();
-        foreach (var groupName in Matched.Groups.Keys.Cast<string>().Where(x => x != "0"))
+        foreach (var groupName in LastMatch.Groups.Keys.Cast<string>().Where(x => x != "0"))
         {
-            result[groupName] = Matched.Groups[groupName].Value.ToString();
+            result[groupName] = LastMatch.Groups[groupName].Value.ToString();
         }
         return result;
     }
@@ -284,10 +289,10 @@ public class Scanner
     /// <summary>
     /// Returns the part of the string before the most recent match. If nothing was priorly matched, it returns the entire string.
     /// </summary>
-    public string? PreMatch() => Matched == null ? null : this.Str.Substring(0, Matched.Index);
+    public string? PreMatch() => LastMatch == null ? null : this.Str.Substring(0, LastMatch.Index);
 
     /// <summary>
     /// Returns the part of the string after the most recent match. If nothing was priorly matched, it returns the entire string.
     /// </summary>
-    public string? PostMatch() => Matched == null ? null : this.Str.Substring(Matched.Index + Matched.Length);
+    public string? PostMatch() => LastMatch == null ? null : this.Str.Substring(LastMatch.Index + LastMatch.Length);
 }
